@@ -1,0 +1,26 @@
+# Node
+node_modules/
+npm-debug.log
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Environment files
+.env
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# Docker
+*.pid
+
+# VSCode
+.vscode/
+
+# Q-table (kalau tidak mau dipush)
+q_table.json
