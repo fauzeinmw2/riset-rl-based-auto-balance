@@ -2,13 +2,19 @@ global:
   scrape_interval: 5s
 
 scrape_configs:
-  - job_name: "api"
+  - job_name: "api-baseline"
+    metrics_path: /metrics
     static_configs:
-      - targets: ["api:3000"]
+      - targets: ["api-baseline:3000"]
+
+  - job_name: "api-rl"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api-rl:3000"]
 
   - job_name: "prometheus"
     static_configs:
-      - targets: ["localhost:9090"]
+      - targets: ["prometheus:9090"]
 
   - job_name: "cadvisor"
     static_configs:

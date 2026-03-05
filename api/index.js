@@ -7,11 +7,11 @@ app.use(express.json());
 
 /* ================= DB ================= */
 const pool = new Pool({
-    user: "admin",
-    host: "host.docker.internal",
-    database: "mydatabase",
-    password: "secret",
-    port: 5433,
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASS,
+    port: 5432,
 });
 
 /* ================= PROMETHEUS ================= */
@@ -21,7 +21,7 @@ client.collectDefaultMetrics({ register });
 const httpRequestDuration = new client.Histogram({
     name: "http_request_duration_seconds",
     help: "API response time",
-    labelNames: ["method", "route"],
+    labelNames: ["method", "route", "service"],
     buckets: [0.05, 0.1, 0.2, 0.5, 1, 2, 5]
 });
 
@@ -34,6 +34,7 @@ app.get("/api/courses", async (req, res) => {
     const end = httpRequestDuration.startTimer({
         method: "GET",
         route: "/api/courses",
+        service: process.env.SERVICE_NAME
     });
 
     try {

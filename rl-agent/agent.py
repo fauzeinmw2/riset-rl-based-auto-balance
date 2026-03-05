@@ -1,10 +1,9 @@
 import time, json, random, math, requests, docker, os
 
 # ================= CONFIG =================
-PROM_URL = "http://localhost:9090/api/v1/query"
-CONTAINER_NAME = "api"
+PROM_URL = "http://prometheus:9090/api/v1/query"
+CONTAINER_NAME = "api-rl"
 QTABLE_FILE = "q_table.json"
-CONTAINER_ID = "ff9c344055b5674516d709365b5370e50ed065974a57f19ffd4f10cbf8cf99cb"
 
 INTERVAL = 5
 ALPHA, GAMMA, EPSILON = 0.1, 0.9, 0.1
@@ -28,6 +27,7 @@ ACTIONS = {
 
 docker_client = docker.from_env()
 container = docker_client.containers.get(CONTAINER_NAME)
+CONTAINER_ID = container.id
 
 Q = json.load(open(QTABLE_FILE)) if os.path.exists(QTABLE_FILE) else {}
 
@@ -41,21 +41,35 @@ def query(q):
         return 0.0
 
 def metrics():
+    container_id = container.id
+    
     # Ratarata cpu usage selama 1 menit terakhir
+    # cpu_core = query(
+    #     f'rate(container_cpu_usage_seconds_total{{id="/docker/{container_id}"}}[1m])'
+    # )
     cpu_core = query(
-        f'rate(container_cpu_usage_seconds_total{{id="/docker/{CONTAINER_ID}"}}[1m])'
+        f'rate(container_cpu_usage_seconds_total{{name="api-rl"}}[1m])'
     )
 
     cpu_util = (cpu_core / CURRENT_CPU_LIMIT) * 100 if CURRENT_CPU_LIMIT else 0
 
+    # mem = query(
+    #     f'container_memory_usage_bytes{{id="/docker/{container_id}"}}'
+    # ) / 1024 / 1024
     mem = query(
-        f'container_memory_usage_bytes{{id="/docker/{CONTAINER_ID}"}}'
+        f'container_memory_usage_bytes{{name="api-rl"}}'
     ) / 1024 / 1024
 
+    # rt = query(
+    #     'sum(rate(http_request_duration_seconds_sum[1m]))'
+    #     ' / sum(rate(http_request_duration_seconds_count[1m]))'
+    # ) * 1000
+
     rt = query(
-        'sum(rate(http_request_duration_seconds_sum[1m]))'
-        ' / sum(rate(http_request_duration_seconds_count[1m]))'
+        'sum(rate(http_request_duration_seconds_sum{job="api-rl"}[1m]))'
+        ' / clamp_min(sum(rate(http_request_duration_seconds_count{job="api-rl"}[1m])), 0.0001)'
     ) * 1000
+
 
     if rt <= 0 or math.isnan(rt):
         rt = 50.0
@@ -122,7 +136,7 @@ def apply_action(a):
 def get_focus_prom():
     try:
         r = requests.get(
-            "http://localhost:9090/api/v1/query",
+            "http://prometheus:9090/api/v1/query",
             params={"query": 'rl_focus'},  # nama metric sesuai Node.js
             timeout=2
         )
