@@ -12,6 +12,8 @@ const pool = new Pool({
     database: process.env.DB_NAME,
     password: process.env.DB_PASS,
     port: 5432,
+    max: 50, // BATAS KONEKSI: Penting agar kontainer tidak hang saat dihajar JMeter
+    idleTimeoutMillis: 30000,
 });
 
 /* ================= PROMETHEUS ================= */
@@ -63,6 +65,7 @@ app.post("/api/register", async (req, res) => {
     const end = httpRequestDuration.startTimer({
         method: "POST",
         route: "/api/register",
+        service: process.env.SERVICE_NAME
     });
 
     const { student_id, class_id } = req.body;
@@ -142,6 +145,7 @@ app.get("/api/student/:id/schedule", async (req, res) => {
     const end = httpRequestDuration.startTimer({
         method: "GET",
         route: "/api/student/schedule",
+        service: process.env.SERVICE_NAME
     });
 
     try {
