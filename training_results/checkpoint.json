@@ -1,0 +1,108 @@
+{
+  "seeds_completed": 3,
+  "results": [
+    {
+      "seed_id": 1,
+      "num_episodes": 15,
+      "start_time": "2026-04-05T21:40:21.362203",
+      "status": "completed",
+      "end_time": "2026-04-05T21:44:11.240813",
+      "duration_seconds": 229,
+      "q_table_states": 4,
+      "q_value_stats": {
+        "mean": -0.04049260952549228,
+        "std": 0.010699142133766966,
+        "min": -0.06196056796746152,
+        "max": -0.024550289321795888
+      },
+      "total_decisions": 15,
+      "reward_stats": {
+        "mean": -0.23080666666666666,
+        "min": -0.3063,
+        "max": -0.1577
+      },
+      "unique_states": 4,
+      "action_histogram": {
+        "0": 3,
+        "6": 4,
+        "1": 1,
+        "2": 3,
+        "4": 2,
+        "8": 2
+      },
+      "artifacts": {
+        "q_table": "/Users/fauzeinmulyawarman/Drive Local/Telkom University/Perkuliahan/WRAP Research/rl-based-auto-balance/rl-agent/logs/training/seed_1/q_table.json",
+        "decisions": "/Users/fauzeinmulyawarman/Drive Local/Telkom University/Perkuliahan/WRAP Research/rl-based-auto-balance/rl-agent/logs/training/seed_1/decisions.csv",
+        "agent_log": "/Users/fauzeinmulyawarman/Drive Local/Telkom University/Perkuliahan/WRAP Research/rl-based-auto-balance/rl-agent/logs/training/seed_1/agent.log"
+      }
+    },
+    {
+      "seed_id": 2,
+      "num_episodes": 15,
+      "start_time": "2026-04-05T21:44:11.248397",
+      "status": "completed",
+      "end_time": "2026-04-05T21:47:59.711013",
+      "duration_seconds": 228,
+      "q_table_states": 4,
+      "q_value_stats": {
+        "mean": -0.03784416556518456,
+        "std": 0.009669540939202996,
+        "min": -0.05102497504197542,
+        "max": -0.01934200506106507
+      },
+      "total_decisions": 15,
+      "reward_stats": {
+        "mean": -0.20408,
+        "min": -0.2971,
+        "max": -0.1208
+      },
+      "unique_states": 4,
+      "action_histogram": {
+        "0": 3,
+        "4": 2,
+        "2": 4,
+        "6": 2,
+        "8": 4
+      },
+      "artifacts": {
+        "q_table": "/Users/fauzeinmulyawarman/Drive Local/Telkom University/Perkuliahan/WRAP Research/rl-based-auto-balance/rl-agent/logs/training/seed_2/q_table.json",
+        "decisions": "/Users/fauzeinmulyawarman/Drive Local/Telkom University/Perkuliahan/WRAP Research/rl-based-auto-balance/rl-agent/logs/training/seed_2/decisions.csv",
+        "agent_log": "/Users/fauzeinmulyawarman/Drive Local/Telkom University/Perkuliahan/WRAP Research/rl-based-auto-balance/rl-agent/logs/training/seed_2/agent.log"
+      }
+    },
+    {
+      "seed_id": 3,
+      "num_episodes": 15,
+      "start_time": "2026-04-05T21:47:59.717348",
+      "status": "completed",
+      "end_time": "2026-04-05T21:51:51.929863",
+      "duration_seconds": 232,
+      "q_table_states": 4,
+      "q_value_stats": {
+        "mean": -0.03418006440253785,
+        "std": 0.015067035671723086,
+        "min": -0.07109745635615582,
+        "max": -0.01851258709835082
+      },
+      "total_decisions": 15,
+      "reward_stats": {
+        "mean": -0.17595333333333332,
+        "min": -0.2718,
+        "max": -0.1154
+      },
+      "unique_states": 4,
+      "action_histogram": {
+        "8": 4,
+        "0": 3,
+        "2": 4,
+        "4": 2,
+        "6": 2
+      },
+      "artifacts": {
+        "q_table": "/Users/fauzeinmulyawarman/Drive Local/Telkom University/Perkuliahan/WRAP Research/rl-based-auto-balance/rl-agent/logs/training/seed_3/q_table.json",
+        "decisions": "/Users/fauzeinmulyawarman/Drive Local/Telkom University/Perkuliahan/WRAP Research/rl-based-auto-balance/rl-agent/logs/training/seed_3/decisions.csv",
+        "agent_log": "/Users/fauzeinmulyawarman/Drive Local/Telkom University/Perkuliahan/WRAP Research/rl-based-auto-balance/rl-agent/logs/training/seed_3/agent.log"
+      }
+    }
+  ]
+}

@@ -1,25 +1,34 @@
 global:
   scrape_interval: 5s
+  evaluation_interval: 5s
 
 scrape_configs:
+  # Baseline API (Node.js)
   - job_name: "api-baseline"
     metrics_path: /metrics
     static_configs:
       - targets: ["api-baseline:3000"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: "api-baseline"
 
+  # RL-Controlled API (Node.js)
   - job_name: "api-rl"
     metrics_path: /metrics
     static_configs:
       - targets: ["api-rl:3000"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: "api-rl"
 
-  - job_name: "prometheus"
-    static_configs:
-      - targets: ["prometheus:9090"]
-
+  # cAdvisor for container metrics (CPU, RAM, etc)
   - job_name: "cadvisor"
     static_configs:
       - targets: ["cadvisor:8080"]
 
-  - job_name: "focus-exporter"
+  # Prometheus self-scrape
+  - job_name: "prometheus"
     static_configs:
-      - targets: ["focus-exporter:9105"]
+      - targets: ["prometheus:9090"]

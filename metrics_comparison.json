@@ -1,0 +1,46 @@
+{
+  "metrics": {
+    "baseline": {
+      "cpu_avg_%": 11.06140442171671,
+      "cpu_max_%": 25.909533438729365,
+      "cpu_p95_%": 25.588762348318085,
+      "mem_avg_MB": 57.872224506578945,
+      "mem_max_MB": 78.25390625,
+      "latency_avg_ms": 14.102608780977887,
+      "latency_p95_ms": 20.945016909090988,
+      "latency_p99_ms": 51.43969867023284,
+      "success_rate_%": 80.41332254090084,
+      "error_rate_%": 0.0
+    },
+    "rl": {
+      "cpu_avg_%": 9.653899971215239,
+      "cpu_max_%": 23.96880164550171,
+      "cpu_p95_%": 23.09407790660886,
+      "mem_avg_MB": 60.083059210526315,
+      "mem_max_MB": 94.74609375,
+      "latency_avg_ms": 16.28766074007646,
+      "latency_p95_ms": 43.29801772727264,
+      "latency_p99_ms": 47.15459663636343,
+      "success_rate_%": 80.37372839180287,
+      "error_rate_%": 0.01896585425727803
+    },
+    "test_duration_seconds": 1800,
+    "test_period": {
+      "start": "2026-04-05T21:41:30.518006",
+      "end": "2026-04-05T22:11:30.518006"
+    }
+  },
+  "comparison": {
+    "cpu_reduction_%": 12.724464243782057,
+    "mem_reduction_MB": -2.21083470394737,
+    "mem_reduction_%": -3.820199971224609,
+    "latency_change_%": 15.493955714391314,
+    "success_rate_improvement_%": -0.039594149097965214,
+    "error_rate_reduction_%": -0.01896585425727803,
+    "baseline_energy_score": 0.15102131068374702,
+    "rl_energy_score": 0.14489515732729052,
+    "energy_reduction_%": 4.05648271010258
+  },
+  "generated_at": "2026-04-05T22:11:30.675915",
+  "prometheus_url": "http://localhost:9090/api/v1/query_range"
+}
