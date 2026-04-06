@@ -11,8 +11,12 @@ PROM_URL = "http://prometheus:9090/api/v1/query"
 CONTAINER_NAME = "api-rl"
 QTABLE_FILE = "q_table.json"
 
-INTERVAL = 5 # Dipercepat menjadi 5 detik agar lebih responsif terhadap JMeter
-COOLDOWN = 5 # Menyesuaikan dengan interval
+# INTERVAL = 5 # Dipercepat menjadi 5 detik agar lebih responsif terhadap JMeter
+# COOLDOWN = 5 # Menyesuaikan dengan interval
+
+# Diperlambat menjadi 15 detik agar metrik stabil dan mencegah thrashing
+INTERVAL = 15 
+COOLDOWN = 15
 
 ALPHA = 0.1
 GAMMA = 0.9
@@ -20,14 +24,17 @@ EPSILON = 0.2
 
 CPU_PERIOD = 100000
 
-# Limit Default Awal
+# Limit Default Awal (RAM diset maksimum untuk FASE 1 agar V8 Node.js stabil)
 CURRENT_CPU_LIMIT = 1.0
 CURRENT_MEM_LIMIT = 512
+
+APPLIED_CPU_LIMIT = CURRENT_CPU_LIMIT
+APPLIED_MEM_LIMIT = CURRENT_MEM_LIMIT
 
 # Batasan Resource (Diperlebar untuk menampung JMeter)
 MIN_CPU = 0.05
 MAX_CPU = 1.0  # Jangan melebihi 1.0 karena cpuset kita cuma kasih 1 core
-MIN_MEM = 128  # NodeJS butuh minimal ~60-80MB untuk idle
+MIN_MEM = 32  
 MAX_MEM = 512  # Samakan dengan api-baseline agar adil saat beban puncak
 
 LAST_ACTION_TIME = 0
@@ -80,30 +87,40 @@ def query(q):
         return 0.0
 
 def metrics():
-    # CPU Core usage
-    # menyimpan total waktu CPU yang dipakai container sejak container start (dalam satuan detik CPU).
-    # menghitung rata-rata berapa CPU yang digunakan per detik dalam 15 detik terakhir
-    cpu_core = query('rate(container_cpu_usage_seconds_total{name="api-rl"}[15s])')
+    try:
+        # 1. Query Response Time (Rata-rata dalam 1 menit terakhir)
+        # Go menggunakan suffix _sum dan _count untuk Histogram
+        query_rt = 'sum(rate(http_request_duration_seconds_sum{service="api-rl"}[1m])) / sum(rate(http_request_duration_seconds_count{service="api-rl"}[1m])) * 1000'
+        
+        # 2. Query CPU & RAM (Tetap sama menggunakan cAdvisor)
+        query_cpu = 'rate(container_cpu_usage_seconds_total{name="api-rl"}[1m]) * 100'
+        query_mem = 'container_memory_usage_bytes{name="api-rl"} / 1024 / 1024'
 
-    # Mengubah penggunaan CPU (dalam core) menjadi persentase terhadap limit CPU container.
-    cpu_util = (cpu_core / CURRENT_CPU_LIMIT) * 100 if CURRENT_CPU_LIMIT else 0
+        res_rt = requests.get(PROM_URL, params={'query': query_rt}).json()
+        res_cpu = requests.get(PROM_URL, params={'query': query_cpu}).json()
+        res_mem = requests.get(PROM_URL, params={'query': query_mem}).json()
 
-    # Memory (RAM) Usage
-    # mengambil jumlah memori yang benar-benar digunakan oleh container api-rl lalu mengubahnya ke satuan MB.
-    mem = query('container_memory_working_set_bytes{name="api-rl"}') / 1024 / 1024
+        rt = float(res_rt['data']['result'][0]['value'][1]) if res_rt['data']['result'] else 0.0
+        cpu = float(res_cpu['data']['result'][0]['value'][1]) if res_cpu['data']['result'] else 0.0
+        mem = float(res_mem['data']['result'][0]['value'][1]) if res_mem['data']['result'] else 0.0
 
-    # Response Time rata-rata (ms)
-    # Average Response Time = Total Request Time / Total Request Count
-    rt = query(
-        'sum(rate(http_request_duration_seconds_sum{job="api-rl"}[1m]))'
-        ' / clamp_min(sum(rate(http_request_duration_seconds_count{job="api-rl"}[1m])), 0.0001)'
-    ) * 1000
+        return cpu, mem, rt
+    except Exception as e:
+        print(f"Error metrics: {e}")
+        return 0.0, 0.0, 0.0
 
-    # Jika kontainer mati atau tidak ada request, anggap RT aman (idle)
-    if rt <= 0 or math.isnan(rt):
-        rt = 10.0
-
-    return cpu_util, mem, rt
+def reward(cpu_util, mem_util, rt):
+    # NORMALISASI: Agar angka RT dan Energy memiliki skala yang sama (0-1)
+    # Target RT ideal = 100ms. Jika 200ms, penalty = 2.0
+    rt_penalty = rt / 100.0 
+    
+    # Energy penalty (CPU dlm %, RAM dlm MB)
+    # Semakin besar pemakaian, semakin besar penalty
+    energy_penalty = (cpu_util / 100.0) + (mem_util / 512.0)
+    
+    # Balance: Berikan bobot yang sama antara performa dan energi
+    # Reward adalah negatif dari total penalty
+    return -(0.5 * rt_penalty + 0.5 * energy_penalty)
 
 # ================= STATE =================
 def state(cpu, mem, rt):
@@ -117,19 +134,6 @@ def state(cpu, mem, rt):
     rt_bin = min(int(rt // 100), 5)      # Setiap 100ms masuk bucket baru, max 5
 
     return f"{cpu_bin}|{mem_bin}|{rt_bin}"
-
-# ================= REWARD =================
-def reward(cpu_util, mem_util, rt):
-    # Penalti RT lebih agresif jika > 500ms
-    perf_penalty = (rt / 100) ** 2
-    if rt > 500:
-        perf_penalty *= 2 
-
-    # Penalti Energi berdasarkan limit
-    cpu_energy_penalty = CURRENT_CPU_LIMIT * 3 # Sedikit dikurangi bobotnya
-    mem_energy_penalty = (CURRENT_MEM_LIMIT / 128) * 1
-
-    return -(perf_penalty + cpu_energy_penalty + mem_energy_penalty)
 
 # ================= RL =================
 def choose(s):
@@ -161,42 +165,51 @@ def save():
         print("⚠️ Save error:", e)
 
 
-# ================= DOCKER CONTROL =================
+# ================= DOCKER CONTROL (UPDATED)=================
 # Parameter:
 # - a: index action dari ACTIONS RL
 # - force_cpu: jika ingin override langsung limit CPU (untuk emergency scaling)
 # - force_mem: jika ingin override langsung limit Memori (untuk emergency scaling)
 def apply_action(a=None, force_cpu=None, force_mem=None):
-
-    # boleh mengubah variabel global untuk menyimpan state limit saat ini
     global CURRENT_CPU_LIMIT, CURRENT_MEM_LIMIT
+    global APPLIED_CPU_LIMIT, APPLIED_MEM_LIMIT
 
     if a is not None:
         action = ACTIONS[int(a)]
         CURRENT_CPU_LIMIT += action["cpu"]
-        CURRENT_MEM_LIMIT += action["mem"]
-    
+        # FASE 2 AKTIF: Agen sekarang mengontrol memori
+        CURRENT_MEM_LIMIT += action["mem"] 
+        
     if force_cpu is not None: CURRENT_CPU_LIMIT = force_cpu
     if force_mem is not None: CURRENT_MEM_LIMIT = force_mem
 
-    # Enforcement batasan absolut.
-    # memastikan CPU RAM tidak melewati batas minimum dan maksimum.
+    # Enforcement batasan absolut (MIN_MEM sekarang 32)
     CURRENT_CPU_LIMIT = max(MIN_CPU, min(MAX_CPU, round(CURRENT_CPU_LIMIT, 2)))
-    CURRENT_MEM_LIMIT = max(MIN_MEM, min(MAX_MEM, int(CURRENT_MEM_LIMIT)))
+    CURRENT_MEM_LIMIT = max(32, min(MAX_MEM, int(CURRENT_MEM_LIMIT)))
 
-    # mb to bytes RAM untuk Docker
-    mem_bytes_val = CURRENT_MEM_LIMIT * 1024 * 1024
+    cpu_diff = abs(CURRENT_CPU_LIMIT - APPLIED_CPU_LIMIT)
+    mem_diff = abs(CURRENT_MEM_LIMIT - APPLIED_MEM_LIMIT)
 
-    try:
-        container.update(
-            cpu_period=CPU_PERIOD,
-            cpu_quota=int(CURRENT_CPU_LIMIT * CPU_PERIOD),
-            mem_limit=mem_bytes_val,
-            memswap_limit=mem_bytes_val
-        )
-        print(f"⚙️ Applied -> CPU={CURRENT_CPU_LIMIT:.2f} | MEM={CURRENT_MEM_LIMIT}MB")
-    except Exception as e:
-        print("⚠️ Docker update failed:", e)
+    is_emergency = (force_mem is not None) or (force_cpu is not None)
+    
+    # Threshold diubah menjadi 16MB agar fine-tuning agen tereksekusi
+    if cpu_diff >= 0.1 or mem_diff >= 16 or is_emergency:
+        mem_bytes_val = int(CURRENT_MEM_LIMIT * 1024 * 1024)
+        try:
+            container.update(
+                cpu_period=CPU_PERIOD,
+                cpu_quota=int(CURRENT_CPU_LIMIT * CPU_PERIOD),
+                mem_limit=mem_bytes_val,
+                memswap_limit=mem_bytes_val
+            )
+            print(f"⚙️ Applied to Docker -> CPU={CURRENT_CPU_LIMIT:.2f} | MEM={CURRENT_MEM_LIMIT}MB")
+            
+            APPLIED_CPU_LIMIT = CURRENT_CPU_LIMIT
+            APPLIED_MEM_LIMIT = CURRENT_MEM_LIMIT
+        except Exception as e:
+            print("⚠️ Docker update failed:", e)
+    else:
+        print(f"⏩ Skipped Docker Update (Delta terlalu kecil) -> Target: CPU={CURRENT_CPU_LIMIT:.2f} | MEM={CURRENT_MEM_LIMIT}MB")
 
 # ================= MAIN LOOP =================
 print("🚀 RL agent started...\n")

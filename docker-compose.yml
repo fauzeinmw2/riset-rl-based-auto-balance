@@ -17,7 +17,7 @@ services:
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   api-baseline:
-    build: ./api
+    build: ./api-go
     container_name: api-baseline
     deploy:
       resources:
@@ -36,7 +36,7 @@ services:
       - postgres
 
   api-rl:
-    build: ./api
+    build: ./api-go
     container_name: api-rl
     deploy:
       resources:
@@ -52,12 +52,6 @@ services:
       SERVICE_NAME: api-rl
     depends_on:
       - postgres
-
-  focus-exporter:
-    build: ./focus-exporter
-    container_name: focus-exporter
-    ports:
-      - "9105:9105"
 
   rl-agent:
     build: ./rl-agent
@@ -92,7 +86,6 @@ services:
       - "--config.file=/etc/prometheus/prometheus.yml"
     depends_on:
       - cadvisor
-      - focus-exporter
 
   grafana:
     image: grafana/grafana
