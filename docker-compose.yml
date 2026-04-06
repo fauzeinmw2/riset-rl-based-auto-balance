@@ -17,13 +17,10 @@ services:
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   api-baseline:
-    build: ./api-go
+    build: ./api
     container_name: api-baseline
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'       # Batas atas (akan di-adjust agent)
-          memory: 512M     # Batas memori 512MB
+    cpus: 1.0
+    mem_limit: 512m
     ports:
       - "3000:3000"
     environment:
@@ -36,12 +33,9 @@ services:
       - postgres
 
   api-rl:
-    build: ./api-go
+    build: ./api
     container_name: api-rl
-    deploy:
-      resources:
-        limits:
-          memory: 512M     # Batas memori 512MB
+    mem_limit: 512m
     ports:
       - "3002:3000"
     environment:
@@ -56,12 +50,18 @@ services:
   rl-agent:
     build: ./rl-agent
     container_name: rl-agent
+    environment:
+      SERVICE_NAME: api-rl
+      MODEL_PATH: /app/models/sac_resource_controller.zip
+      TARGET_CPU_CORE: 0.7
+      TARGET_MEM_MB: 80
+      CONTROL_INTERVAL_SEC: 10
     depends_on:
       - api-rl
       - prometheus
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./rl-agent/q_table.json:/app/q_table.json
+      - ./rl-agent/models:/app/models
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.55.1

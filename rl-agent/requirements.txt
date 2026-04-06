@@ -1,2 +1,6 @@
 requests
 docker
+numpy
+gymnasium
+stable-baselines3
+PyYAML

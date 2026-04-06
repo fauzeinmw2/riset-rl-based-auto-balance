@@ -1,0 +1,28 @@
+seed: 42
+algorithm: sac
+model_output: /app/models/sac_resource_controller.zip
+total_timesteps: 120000
+eval_episodes: 10
+
+constraints:
+  target_cpu_core: 0.7
+  target_mem_mb: 80
+  max_rt_ms: 350
+  max_error_rate: 0.03
+
+reward:
+  w_sla: 0.78
+  w_energy: 0.14
+  w_throughput: 0.08
+  severe_sla_penalty: 4.0
+  oom_penalty: 3.5
+  downscale_under_load_penalty: 1.5
+
+environment:
+  episode_steps: 160
+  action_cpu_step: 0.08
+  action_mem_step_mb: 32
+  min_cpu_core: 0.1
+  max_cpu_core: 1.0
+  min_mem_mb: 64
+  max_mem_mb: 512

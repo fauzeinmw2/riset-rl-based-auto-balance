@@ -27,7 +27,27 @@ const httpRequestDuration = new client.Histogram({
     buckets: [0.05, 0.1, 0.2, 0.5, 1, 2, 5]
 });
 
+const httpRequestsTotal = new client.Counter({
+    name: "http_requests_total",
+    help: "Total HTTP requests grouped by response status",
+    labelNames: ["method", "route", "service", "status"]
+});
+
 register.registerMetric(httpRequestDuration);
+register.registerMetric(httpRequestsTotal);
+
+app.use((req, res, next) => {
+    res.on("finish", () => {
+        const route = req.route?.path || req.path || "unknown";
+        httpRequestsTotal.inc({
+            method: req.method,
+            route,
+            service: process.env.SERVICE_NAME,
+            status: String(res.statusCode)
+        });
+    });
+    next();
+});
 
 /* ======================================================
    1️⃣ GET Available Courses (JOIN + Aggregation)

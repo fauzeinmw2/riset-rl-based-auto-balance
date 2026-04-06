@@ -24,3 +24,9 @@ __pycache__/
 
 # Q-table (kalau tidak mau dipush)
 # q_table.json
+
+# RL artifacts
+rl-agent/models/
+
+# Load test outputs
+load_test/results/

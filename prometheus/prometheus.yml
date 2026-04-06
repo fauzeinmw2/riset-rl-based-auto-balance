@@ -20,6 +20,3 @@ scrape_configs:
     static_configs:
       - targets: ["cadvisor:8080"]
 
-  - job_name: "focus-exporter"
-    static_configs:
-      - targets: ["focus-exporter:9105"]
