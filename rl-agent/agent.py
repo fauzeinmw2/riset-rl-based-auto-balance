@@ -24,6 +24,13 @@ EPSILON = 0.2
 
 CPU_PERIOD = 100000
 
+# Batas aman agar container Node.js tidak gampang OOM / starvation saat spike
+SAFE_MIN_CPU = 0.25
+SAFE_MIN_MEM = 256
+SAFE_SCALE_DOWN_RT_MS = 120
+SAFE_SCALE_DOWN_CPU_PERCENT = 35
+SAFE_SCALE_DOWN_MEM_RATIO = 0.50
+
 # Limit Default Awal (RAM diset maksimum untuk FASE 1 agar V8 Node.js stabil)
 CURRENT_CPU_LIMIT = 1.0
 CURRENT_MEM_LIMIT = 512
@@ -32,9 +39,9 @@ APPLIED_CPU_LIMIT = CURRENT_CPU_LIMIT
 APPLIED_MEM_LIMIT = CURRENT_MEM_LIMIT
 
 # Batasan Resource (Diperlebar untuk menampung JMeter)
-MIN_CPU = 0.05
+MIN_CPU = SAFE_MIN_CPU
 MAX_CPU = 1.0  # Jangan melebihi 1.0 karena cpuset kita cuma kasih 1 core
-MIN_MEM = 32  
+MIN_MEM = SAFE_MIN_MEM
 MAX_MEM = 512  # Samakan dengan api-baseline agar adil saat beban puncak
 
 LAST_ACTION_TIME = 0
@@ -67,6 +74,15 @@ except docker.errors.NotFound:
     print(f"❌ Error: Kontainer {CONTAINER_NAME} tidak ditemukan!")
     exit(1)
 
+
+def refresh_container():
+    global container
+    try:
+        container = docker_client.containers.get(CONTAINER_NAME)
+        return container
+    except docker.errors.NotFound:
+        return None
+
 # ================= SAFE LOAD QTABLE =================
 if os.path.exists(QTABLE_FILE) and os.path.getsize(QTABLE_FILE) > 0:
     try:
@@ -78,11 +94,22 @@ else:
     Q = {}
 
 # ================= PROMETHEUS =================
+def sanitize_metric(value, default=0.0, minimum=0.0):
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return default
+
+    if math.isnan(numeric) or math.isinf(numeric):
+        return default
+
+    return max(minimum, numeric)
+
 def query(q):
     try:
         r = requests.get(PROM_URL, params={"query": q}, timeout=2)
         res = r.json().get("data", {}).get("result", [])
-        return float(res[0]["value"][1]) if res else 0.0
+        return sanitize_metric(res[0]["value"][1]) if res else 0.0
     except:
         return 0.0
 
@@ -100,9 +127,15 @@ def metrics():
         res_cpu = requests.get(PROM_URL, params={'query': query_cpu}).json()
         res_mem = requests.get(PROM_URL, params={'query': query_mem}).json()
 
-        rt = float(res_rt['data']['result'][0]['value'][1]) if res_rt['data']['result'] else 0.0
-        cpu = float(res_cpu['data']['result'][0]['value'][1]) if res_cpu['data']['result'] else 0.0
-        mem = float(res_mem['data']['result'][0]['value'][1]) if res_mem['data']['result'] else 0.0
+        rt = sanitize_metric(
+            res_rt['data']['result'][0]['value'][1] if res_rt['data']['result'] else 0.0
+        )
+        cpu = sanitize_metric(
+            res_cpu['data']['result'][0]['value'][1] if res_cpu['data']['result'] else 0.0
+        )
+        mem = sanitize_metric(
+            res_mem['data']['result'][0]['value'][1] if res_mem['data']['result'] else 0.0
+        )
 
         return cpu, mem, rt
     except Exception as e:
@@ -124,14 +157,18 @@ def reward(cpu_util, mem_util, rt):
 
 # ================= STATE =================
 def state(cpu, mem, rt):
+    cpu = sanitize_metric(cpu)
+    mem = sanitize_metric(mem)
+    rt = sanitize_metric(rt)
+
     # Disederhanakan
     cpu_ratio = cpu / 100
     mem_ratio = mem / CURRENT_MEM_LIMIT if CURRENT_MEM_LIMIT > 0 else 0
 
     # Simplifikasi bucket state agar Q-Table lebih cepat konvergen
-    cpu_bin = min(int(cpu_ratio * 4), 3) # 0-3
-    mem_bin = min(int(mem_ratio * 4), 3) # 0-3
-    rt_bin = min(int(rt // 100), 5)      # Setiap 100ms masuk bucket baru, max 5
+    cpu_bin = max(0, min(int(cpu_ratio * 4), 3)) # 0-3
+    mem_bin = max(0, min(int(mem_ratio * 4), 3)) # 0-3
+    rt_bin = max(0, min(int(rt // 100), 5))      # Setiap 100ms masuk bucket baru, max 5
 
     return f"{cpu_bin}|{mem_bin}|{rt_bin}"
 
@@ -165,6 +202,19 @@ def save():
         print("⚠️ Save error:", e)
 
 
+def can_scale_down(cpu, mem, rt):
+    cpu = sanitize_metric(cpu)
+    mem = sanitize_metric(mem)
+    rt = sanitize_metric(rt)
+
+    mem_ratio = mem / CURRENT_MEM_LIMIT if CURRENT_MEM_LIMIT > 0 else 1.0
+    return (
+        cpu <= SAFE_SCALE_DOWN_CPU_PERCENT
+        and mem_ratio <= SAFE_SCALE_DOWN_MEM_RATIO
+        and rt <= SAFE_SCALE_DOWN_RT_MS
+    )
+
+
 # ================= DOCKER CONTROL (UPDATED)=================
 # Parameter:
 # - a: index action dari ACTIONS RL
@@ -174,18 +224,20 @@ def apply_action(a=None, force_cpu=None, force_mem=None):
     global CURRENT_CPU_LIMIT, CURRENT_MEM_LIMIT
     global APPLIED_CPU_LIMIT, APPLIED_MEM_LIMIT
 
+    action = None
     if a is not None:
         action = ACTIONS[int(a)]
-        CURRENT_CPU_LIMIT += action["cpu"]
-        # FASE 2 AKTIF: Agen sekarang mengontrol memori
-        CURRENT_MEM_LIMIT += action["mem"] 
+        next_cpu_limit = CURRENT_CPU_LIMIT + action["cpu"]
+        next_mem_limit = CURRENT_MEM_LIMIT + action["mem"]
+        CURRENT_CPU_LIMIT = next_cpu_limit
+        CURRENT_MEM_LIMIT = next_mem_limit
         
     if force_cpu is not None: CURRENT_CPU_LIMIT = force_cpu
     if force_mem is not None: CURRENT_MEM_LIMIT = force_mem
 
-    # Enforcement batasan absolut (MIN_MEM sekarang 32)
+    # Enforcement batasan absolut dengan minimum aman untuk workload Node.js
     CURRENT_CPU_LIMIT = max(MIN_CPU, min(MAX_CPU, round(CURRENT_CPU_LIMIT, 2)))
-    CURRENT_MEM_LIMIT = max(32, min(MAX_MEM, int(CURRENT_MEM_LIMIT)))
+    CURRENT_MEM_LIMIT = max(MIN_MEM, min(MAX_MEM, int(CURRENT_MEM_LIMIT)))
 
     cpu_diff = abs(CURRENT_CPU_LIMIT - APPLIED_CPU_LIMIT)
     mem_diff = abs(CURRENT_MEM_LIMIT - APPLIED_MEM_LIMIT)
@@ -196,7 +248,12 @@ def apply_action(a=None, force_cpu=None, force_mem=None):
     if cpu_diff >= 0.1 or mem_diff >= 16 or is_emergency:
         mem_bytes_val = int(CURRENT_MEM_LIMIT * 1024 * 1024)
         try:
-            container.update(
+            live_container = refresh_container()
+            if live_container is None:
+                print(f"⚠️ Container {CONTAINER_NAME} tidak ditemukan saat apply_action.")
+                return
+
+            live_container.update(
                 cpu_period=CPU_PERIOD,
                 cpu_quota=int(CURRENT_CPU_LIMIT * CPU_PERIOD),
                 mem_limit=mem_bytes_val,
@@ -235,6 +292,13 @@ while True:
     # RL Action Selection
     if now - LAST_ACTION_TIME > COOLDOWN:
         a = choose(s)
+
+        # Jangan turunkan resource saat service belum benar-benar stabil.
+        if ACTIONS[a]["cpu"] < 0 or ACTIONS[a]["mem"] < 0:
+            if not can_scale_down(cpu, mem, rt):
+                print("🛡️ Scale-down diblokir untuk menjaga stabilitas container.")
+                a = 0
+
         apply_action(a=a)
         LAST_ACTION_TIME = now
     else:

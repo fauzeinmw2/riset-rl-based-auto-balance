@@ -208,6 +208,98 @@ docker compose down -v
 - menambahkan skenario load testing, misalnya dengan JMeter,
 - menambahkan evaluasi hasil eksperimen antara baseline dan RL.
 
+## Pengujian Spike Test dengan K6
+
+Repository ini sekarang juga memuat skenario spike test K6 di folder `tests/k6/`.
+
+File yang tersedia:
+
+- `tests/k6/spike-test.js`: script K6 untuk mengirim request acak ke endpoint API.
+- `tests/k6/run-spike-comparison.mjs`: runner untuk menjalankan pengujian secara bergantian, dimulai dari `api-baseline` lalu `api-rl`, dengan pola spike yang identik.
+- `tests/k6/format-spike-report.mjs`: formatter untuk menampilkan resume hasil pengujian.
+
+### Pola Spike
+
+Runner akan memilih salah satu pola berikut:
+
+- `low -> high -> medium`
+- `high -> low -> medium`
+
+Setiap pengujian dijalankan selama 10 menit secara default, dan kedua service memakai pola yang sama agar perbandingan tetap adil.
+
+### Menjalankan Pengujian
+
+Pastikan service berikut sudah aktif:
+
+- `api-baseline`
+- `api-rl`
+- `prometheus`
+- `cadvisor`
+
+Lalu jalankan:
+
+```bash
+node tests/k6/run-spike-comparison.mjs
+```
+
+Jika ingin menentukan pola spike secara manual:
+
+```bash
+SPIKE_PATTERN=high-low-medium node tests/k6/run-spike-comparison.mjs
+```
+
+Jika URL service berbeda dari default:
+
+```bash
+BASELINE_URL=http://localhost:3000 \
+RL_URL=http://localhost:3002 \
+PROMETHEUS_URL=http://localhost:9090 \
+node tests/k6/run-spike-comparison.mjs
+```
+
+### Output Hasil
+
+Hasil pengujian akan disimpan di:
+
+- `tests/k6/results/comparison-report.txt`
+- `tests/k6/results/comparison-report.json`
+- `tests/k6/results/api-baseline-summary.json`
+- `tests/k6/results/api-rl-summary.json`
+
+Untuk menampilkan ulang resume hasil:
+
+```bash
+node tests/k6/format-spike-report.mjs
+```
+
+Format output resume:
+
+```text
+=== Spike Test Result ===
+Durasi Pengujian: 10 Menit
+Pola Spike: low -> high -> medium
+
+1. API-Baseline
+    - CPU Usage: 10% (0.1 Core)
+    - RAM Usage: 100 mb
+    - Response Time (Avg): 50ms
+    - Request Success: 100 req
+    - Request Error: 0 req
+
+2. API-RL
+    - CPU Usage: 8% (0.08 Core)
+    - RAM Usage: 110 mb
+    - Response Time (Avg): 55ms
+    - Request Success: 110 req
+    - Request Error: 0 req
+
+3. Result
+    - Energy Consumption: Hemat 3%
+        - CPU Usage turun 2% (0.02 Core)
+        - RAM Usage turun 10 mb
+    - Performance: Turun 10%
+```
+
 ## Lisensi
 
 Belum ada lisensi yang didefinisikan pada repository ini.

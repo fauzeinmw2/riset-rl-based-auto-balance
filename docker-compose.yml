@@ -38,6 +38,7 @@ services:
   api-rl:
     build: ./api
     container_name: api-rl
+    restart: always
     deploy:
       resources:
         limits:

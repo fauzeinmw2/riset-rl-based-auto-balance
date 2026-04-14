@@ -1,0 +1,73 @@
+{
+  "durationMinutes": 10,
+  "pattern": [
+    "low",
+    "high",
+    "medium"
+  ],
+  "stages": [
+    {
+      "duration": "3m",
+      "target": 10,
+      "label": "low"
+    },
+    {
+      "duration": "3m",
+      "target": 60,
+      "label": "high"
+    },
+    {
+      "duration": "3m",
+      "target": 25,
+      "label": "medium"
+    },
+    {
+      "duration": "1m",
+      "target": 0,
+      "label": "cooldown"
+    }
+  ],
+  "baseline": {
+    "key": "api-baseline",
+    "title": "API-Baseline",
+    "totalRequests": 16275,
+    "successRequests": 4054,
+    "failedRequests": 12221,
+    "responseAvgMs": 3.3894962221446674,
+    "cpuPercentAvg": 7.122437504638751,
+    "cpuCoreAvg": 0.07122437504638751,
+    "memMbAvg": 82.49723704268293,
+    "thresholdsBreached": true,
+    "k6ExitCode": 99,
+    "containerRestartCount": 0,
+    "containerOOMKilled": false,
+    "containerStatus": "running",
+    "containerExitCode": 0
+  },
+  "rl": {
+    "key": "api-rl",
+    "title": "API-RL",
+    "totalRequests": 16016,
+    "successRequests": 4083,
+    "failedRequests": 11933,
+    "responseAvgMs": 12.396272345906121,
+    "cpuPercentAvg": 6.953310750398615,
+    "cpuCoreAvg": 0.06953310750398616,
+    "memMbAvg": 51.27677210365854,
+    "thresholdsBreached": true,
+    "k6ExitCode": 99,
+    "containerRestartCount": 0,
+    "containerOOMKilled": false,
+    "containerStatus": "running",
+    "containerExitCode": 0
+  },
+  "comparison": {
+    "energyDirection": "Hemat",
+    "energyDiffPercent": 26.97,
+    "cpuChange": 0.16912675424013557,
+    "cpuCoreChange": 0.0016912675424013562,
+    "memChange": 31.22046493902439,
+    "performanceDirection": "Turun",
+    "performanceDiffPercent": 265.73
+  }
+}
