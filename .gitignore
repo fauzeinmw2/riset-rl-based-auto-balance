@@ -24,3 +24,7 @@ __pycache__/
 
 # Q-table (kalau tidak mau dipush)
 # q_table.json
+
+# RL agent checkpoints
+rl-agent/agent_state.json
+rl-agent/dqn_model.pt

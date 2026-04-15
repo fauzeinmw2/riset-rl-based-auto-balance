@@ -1,20 +1,20 @@
 {
   "durationMinutes": 10,
   "pattern": [
-    "low",
     "high",
+    "low",
     "medium"
   ],
   "stages": [
     {
       "duration": "3m",
-      "target": 10,
-      "label": "low"
+      "target": 60,
+      "label": "high"
     },
     {
       "duration": "3m",
-      "target": 60,
-      "label": "high"
+      "target": 10,
+      "label": "low"
     },
     {
       "duration": "3m",
@@ -30,13 +30,13 @@
   "baseline": {
     "key": "api-baseline",
     "title": "API-Baseline",
-    "totalRequests": 16275,
-    "successRequests": 4054,
-    "failedRequests": 12221,
-    "responseAvgMs": 3.3894962221446674,
-    "cpuPercentAvg": 7.122437504638751,
-    "cpuCoreAvg": 0.07122437504638751,
-    "memMbAvg": 82.49723704268293,
+    "totalRequests": 16296,
+    "successRequests": 4182,
+    "failedRequests": 12114,
+    "responseAvgMs": 4.815920637115636,
+    "cpuPercentAvg": 8.937680333682401,
+    "cpuCoreAvg": 0.08937680333682402,
+    "memMbAvg": 57.05954649390244,
     "thresholdsBreached": true,
     "k6ExitCode": 99,
     "containerRestartCount": 0,
@@ -47,13 +47,13 @@
   "rl": {
     "key": "api-rl",
     "title": "API-RL",
-    "totalRequests": 16016,
-    "successRequests": 4083,
-    "failedRequests": 11933,
-    "responseAvgMs": 12.396272345906121,
-    "cpuPercentAvg": 6.953310750398615,
-    "cpuCoreAvg": 0.06953310750398616,
-    "memMbAvg": 51.27677210365854,
+    "totalRequests": 16168,
+    "successRequests": 3934,
+    "failedRequests": 12234,
+    "responseAvgMs": 15.177801592617332,
+    "cpuPercentAvg": 8.623327875027119,
+    "cpuCoreAvg": 0.08623327875027119,
+    "memMbAvg": 102.0633574695122,
     "thresholdsBreached": true,
     "k6ExitCode": 99,
     "containerRestartCount": 0,
@@ -62,12 +62,12 @@
     "containerExitCode": 0
   },
   "comparison": {
-    "energyDirection": "Hemat",
-    "energyDiffPercent": 26.97,
-    "cpuChange": 0.16912675424013557,
-    "cpuCoreChange": 0.0016912675424013562,
-    "memChange": 31.22046493902439,
+    "energyDirection": "Boros",
+    "energyDiffPercent": 42.2,
+    "cpuChange": 0.31435245865528216,
+    "cpuCoreChange": 0.003143524586552829,
+    "memChange": -45.00381097560976,
     "performanceDirection": "Turun",
-    "performanceDiffPercent": 265.73
+    "performanceDiffPercent": 215.16
   }
 }

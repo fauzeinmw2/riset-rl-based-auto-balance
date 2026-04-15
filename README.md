@@ -41,7 +41,7 @@ Project ini bertujuan untuk:
 3. Prometheus mengumpulkan metrik dari API dan cAdvisor.
 4. Agen RL membaca metrik dari Prometheus.
 5. Agen RL menghitung state, memilih action, lalu memperbarui limit CPU dan memori container `api-rl`.
-6. Q-table agen disimpan di `rl-agent/q_table.json` agar pembelajaran dapat dilanjutkan.
+6. Checkpoint agen DQN disimpan di `rl-agent/dqn_model.pt` dan `rl-agent/agent_state.json` agar pembelajaran dapat dilanjutkan.
 
 ## Endpoint API
 
@@ -157,15 +157,16 @@ http://localhost:3002/metrics
 
 Service `rl-agent` berjalan sebagai loop periodik yang:
 
-- mengambil metrik CPU, memori, dan response time,
-- membentuk state diskrit,
-- memilih action dari action space,
+- mengambil metrik CPU, memori, average latency, p95 latency, dan request rate,
+- membentuk state kontinu ter-normalisasi,
+- memilih action menggunakan DQN dengan warm-up heuristic dan safety gate,
 - mengubah limit resource container `api-rl`,
-- memperbarui nilai Q-table.
+- memperbarui replay buffer, model policy, dan checkpoint runtime.
 
-File pembelajaran agen tersimpan di:
+File checkpoint agen tersimpan di:
 
-- `rl-agent/q_table.json`
+- `rl-agent/dqn_model.pt`
+- `rl-agent/agent_state.json`
 
 ### 8. Menghentikan Service
 
