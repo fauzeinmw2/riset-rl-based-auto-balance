@@ -17,13 +17,14 @@ services:
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   api-baseline:
-    build: ./api-go
+    build: ./api
     container_name: api-baseline
+    cpuset: "0"
     deploy:
       resources:
         limits:
-          cpus: '1.0'       # Batas atas (akan di-adjust agent)
-          memory: 512M     # Batas memori 512MB
+          cpus: '1.0'       
+          memory: 512M  
     ports:
       - "3000:3000"
     environment:
@@ -36,8 +37,9 @@ services:
       - postgres
 
   api-rl:
-    build: ./api-go
+    build: ./api
     container_name: api-rl
+    cpuset: "1"
     deploy:
       resources:
         limits:
