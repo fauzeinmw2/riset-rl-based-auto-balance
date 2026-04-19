@@ -1,0 +1,67 @@
+# Pseudocode RL-Based Auto-Balance Agent
+
+
+# Ulangi setiap interval waktu tertentu (misalnya setiap 5 detik):
+# 1. Ambil data metrik energy consumption dan performa (CPU, memori, latensi, dll.)
+# 2. Pilih action terbaik yang tersimpan dalam q-table berdasarkan state saat ini
+# 3. Jika state belum ada dalam q-table, maka:
+#       3.1. Cek apakah limit CPU atau limit Memory saat ini terlalu tinggi dari usage yang sebenernya
+#            (misalnya, limit memory saat ini 300MB, padahal usage memory saat ini hanya 36MB)
+#       3.2. Jika iya, maka pilih action untuk menurunkan limit CPU atau Memory (exploitation)
+#           - Penurunan Limit akan dilakukan jika tidak akan melewati batas minimum yang sudah ditentukan (misalnya, limit CPU tidak boleh turun di bawah 0.1, limit Memory tidak boleh turun di bawah 50MB)
+#           - Limit tidak akan diturunkan jika limit akan menjadi < usage + 20% (misalnya, jika usage memory saat ini 36MB, maka limit memory tidak akan diturunkan di bawah 43.2MB)
+#       3.1. Jika tidak, maka pilih action secara acak (exploration)
+#            - Naikkan limit untuk menjaga SLA, atau turunkan limit untuk menghemat energy consumption
+# 4. Terapkan action yang dipilih (misalnya, ubah batas limit CPU atau ram)
+# 5. Setelah beberapa waktu (misalnya, 1 menit), hitung reward berdasarkan perubahan metrik performa dan energy consumption
+# 6. Jika reward positif, maka update q-table dengan reward yang didapatkan untuk state dan action yang dipilih
+# 7. Jika reward negatif, maka skip proses update q-table
+
+
+
+=== Menggunakan DQN ===
+Initialize Q-network with random weights
+Initialize target network = Q-network
+Initialize replay buffer
+
+for each episode:
+  
+  state = observe_metrics()
+
+  loop every T seconds:
+
+    # epsilon-greedy
+    if random() < epsilon:
+        action = random_action()
+    else:
+        action = argmax(Q_network(state))
+
+    # safety constraint
+    action = enforce_constraints(action)
+
+    apply(action)
+
+    wait (stabilization delay)
+
+    next_state = observe_metrics()
+
+    reward = compute_reward(next_state)
+
+    store (state, action, reward, next_state) in replay buffer
+
+    state = next_state
+
+    # training step
+    sample batch from replay buffer
+
+    for each sample (s, a, r, s'):
+        target = r + gamma * max(target_network(s'))
+
+    update Q-network using loss:
+        (Q(s,a) - target)^2
+
+    every N steps:
+        update target network
+
+    decay epsilon
+

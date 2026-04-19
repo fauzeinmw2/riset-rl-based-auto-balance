@@ -1,2 +1,4 @@
 requests
 docker
+numpy
+torch

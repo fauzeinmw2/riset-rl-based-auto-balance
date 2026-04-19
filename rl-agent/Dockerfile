@@ -10,4 +10,4 @@ COPY . .
 
 ENV PYTHONUNBUFFERED=1
 
-CMD ["python", "agent.py"]
+CMD ["python", "dqn_agent.py"]
